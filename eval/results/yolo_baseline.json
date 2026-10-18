@@ -1,0 +1,7 @@
+{
+  "name": "baseline",
+  "top1": 0.9969819188117981,
+  "epochs": 15,
+  "imgsz": 224,
+  "weights": "runs/baseline/weights/best.pt"
+}

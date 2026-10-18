@@ -1,0 +1,42 @@
+# local runtime state
+var/
+.env
+*.db
+__pycache__/
+.pytest_cache/
+
+# data: regenerable or licensed (download with the scripts in data/)
+data/process_events.csv
+data/raw/
+data/splits/
+data/golden/*
+!data/golden/README.md
+*.pt
+runs/
+
+# web
+client/node_modules/
+client/dist/
+.firebase/
+.env.local
+eval/results/.work/
+data/samples/*.jpg
+data/samples/*.jpeg
+data/samples/samples.json
+
+# extracted Kaggle download (use data/prepare_casting.py)
+archive/
+archive.zip
+data/colab/
+data/samples/_synthetic/
+senpaiqc_yolo.zip
+
+# models/: only the shipped fast-path weights are versioned (3 MB, needed by the Dockerfile)
+!models/best.pt
+
+# local tooling
+.claude/
+.deepeval/
+
+# Office lock files
+~$*

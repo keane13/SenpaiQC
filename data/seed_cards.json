@@ -1,0 +1,76 @@
+[
+  {
+    "card_id": "imp-200-porosity-v1",
+    "part_number": "IMP-200",
+    "defect_name": "porosity",
+    "visual_cues": [
+      "round pinholes",
+      "dull spots near the hub",
+      "clusters of small dark dots"
+    ],
+    "typical_location": "hub and blade root",
+    "inspection_view": "tilt 30 deg so light rakes across the hub; pinholes show as dark dots with a bright rim",
+    "accept_limit": "max 2 pinholes under 0.5 mm outside the sealing face; none on the sealing face",
+    "severity": "major",
+    "rework_action": "Grind the pinhole area flush; fill with approved epoxy if under 1 mm deep; scrap if any pinhole is on the sealing face",
+    "source_video": "SEED (synthetic demo card - replace with the expert's video)",
+    "source_timestamp": "",
+    "approved_by": "demo-seed",
+    "status": "approved"
+  },
+  {
+    "card_id": "imp-200-shrinkage-v1",
+    "part_number": "IMP-200",
+    "defect_name": "shrinkage",
+    "visual_cues": [
+      "irregular jagged cavity",
+      "dendritic texture inside the hole",
+      "sunken surface"
+    ],
+    "typical_location": "thick sections at the hub",
+    "inspection_view": "tilt 45 deg toward the light and look into the thick hub section for a sunken, jagged cavity",
+    "accept_limit": "no visible shrinkage cavity on machined faces",
+    "severity": "major",
+    "rework_action": "Mark the cavity; send to weld repair; re-machine and re-inspect",
+    "source_video": "SEED (synthetic demo card - replace with the expert's video)",
+    "source_timestamp": "",
+    "approved_by": "demo-seed",
+    "status": "approved"
+  },
+  {
+    "card_id": "imp-200-crack-v1",
+    "part_number": "IMP-200",
+    "defect_name": "crack",
+    "visual_cues": [
+      "thin dark line",
+      "line that follows a blade edge or the outer rim"
+    ],
+    "typical_location": "blade edges and outer rim",
+    "inspection_view": "rotate -20 deg and follow each blade edge and the outer rim under low-angle light",
+    "accept_limit": "zero cracks",
+    "severity": "critical",
+    "rework_action": "Do not rework; scrap the part and tag the mould for inspection",
+    "source_video": "SEED (synthetic demo card - replace with the expert's video)",
+    "source_timestamp": "",
+    "approved_by": "demo-seed",
+    "status": "approved"
+  },
+  {
+    "card_id": "imp-200-burr-v1",
+    "part_number": "IMP-200",
+    "defect_name": "burr",
+    "visual_cues": [
+      "raised rough edge",
+      "flash along the parting line"
+    ],
+    "typical_location": "outer rim and parting line",
+    "inspection_view": "view edge-on at 80 deg so raised flash stands out against the background",
+    "accept_limit": "flash under 0.3 mm high is acceptable",
+    "severity": "minor",
+    "rework_action": "Deburr with a hand file along the parting line; blow off chips; re-inspect the edge",
+    "source_video": "SEED (synthetic demo card - replace with the expert's video)",
+    "source_timestamp": "",
+    "approved_by": "demo-seed",
+    "status": "approved"
+  }
+]

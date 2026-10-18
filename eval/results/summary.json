@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-10-17T16:05:11+00:00",
+  "mode": {
+    "backend": "local",
+    "fast_path": "yolo:best.pt",
+    "reasoning": "gemini-robotics-er-2-preview",
+    "text": "gemini-3.8-flash",
+    "robot": "scripted-kinematic-sim",
+    "gemini": true
+  },
+  "golden_n": 200,
+  "recall": 0.99,
+  "false_reject_rate": 0.0,
+  "escalation_rate_before": 0.01,
+  "escalation_rate_after": null,
+  "card_citation_accuracy": null,
+  "citation_reviewed": 0,
+  "p95_latency_yolo_ms": 171,
+  "p95_latency_er2_ms": 6635,
+  "cost_per_1000_parts_usd": 0.069635,
+  "time_to_8d_minutes": 4.43,
+  "root_cause_hit": true,
+  "root_cause": {
+    "spc_flagged": true,
+    "flagged_subgroup": "2026-09-25/A",
+    "first_affected_date": "2026-09-25",
+    "root_cause_hit": true,
+    "top_hypothesis": {
+      "mould_id": "MD-04",
+      "material_lot": "LOT-2409C"
+    },
+    "analyst": "adk-agent:gemini-3.8-flash",
+    "time_to_8d_minutes": 4.43,
+    "analysis_seconds": 265.6,
+    "analysis_cost_usd": 0.096067,
+    "tool_calls": 17
+  },
+  "notes": [
+    "Root-cause scenario runs on SYNTHETIC process data with a planted cause."
+  ]
+}

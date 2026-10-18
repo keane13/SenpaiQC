@@ -1,0 +1,12 @@
+{
+  "mould_id": "MD-04",
+  "material_lot": "LOT-2409C",
+  "machine_id": "MC-02",
+  "start_day": 18,
+  "defect_name": "porosity",
+  "rate_after": 0.3,
+  "part_number": "IMP-200",
+  "first_affected_date": "2026-09-25",
+  "synthetic": true,
+  "seed": 7
+}

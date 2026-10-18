@@ -1,0 +1,16 @@
+.git/
+var/
+**/node_modules/
+client/dist/
+eval/results/.work/
+data/raw/
+data/splits/
+data/golden/
+runs/
+**/__pycache__/
+.env
+.env.local
+archive/
+archive.zip
+data/colab/
+senpaiqc_yolo.zip

@@ -1,0 +1,15 @@
+fastapi==0.139.0
+uvicorn==0.51.0
+python-multipart==0.0.28
+pydantic-settings==2.14.1
+httpx==0.28.1
+google-genai==2.11.0
+google-adk==2.4.0
+google-cloud-bigquery==3.41.0
+google-cloud-firestore==2.28.0
+google-cloud-storage==3.10.1
+opencv-python-headless==5.0.0.93
+numpy>=2.0
+# YOLO fast path (CPU). Remove to ship without a fast path; every part then escalates.
+ultralytics==8.4.174
+python-docx==1.2.0
