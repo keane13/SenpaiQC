@@ -29,7 +29,7 @@ archive/
 archive.zip
 data/colab/
 data/samples/_synthetic/
-senpaiqc_yolo.zip
+*_yolo.zip
 
 # models/: only the shipped fast-path weights are versioned (3 MB, needed by the Dockerfile)
 !models/best.pt
