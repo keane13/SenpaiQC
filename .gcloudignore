@@ -17,3 +17,8 @@ senpaiqc_yolo.zip
 yolo11n-cls.pt
 senpaiqc_yolo.zip
 .pytest_cache/
+# Not needed by the image (docs, decks, Office lock files, local tooling)
+docs/
+~$*
+.claude/
+.deepeval/

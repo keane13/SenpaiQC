@@ -59,6 +59,17 @@ class Settings(BaseSettings):
     max_video_mb: int = 30  # direct upload through the API (Cloud Run caps request bodies at 32 MiB)
     max_video_upload_mb: int = 500  # via a signed URL straight to Cloud Storage
 
+    # Spike alerts. With backend=gcp and alert_topic set, scan() publishes to Pub/Sub and a push
+    # subscription delivers to /api/alerts/push; otherwise alerts are delivered inline. With no
+    # channel configured they are only logged.
+    alert_topic: str = ""
+    alert_push_audience: str = ""  # push endpoint URL, as set on the subscription (OIDC audience)
+    alert_push_sa: str = ""  # service account Pub/Sub signs push requests with
+    app_url: str = ""  # base URL for links in alerts
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+    google_chat_webhook: str = ""  # Google Workspace only
+
     # Root-cause agent: empty -> run in-process; else POST to this ADK service URL.
     agent_url: str = ""
 

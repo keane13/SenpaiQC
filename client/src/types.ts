@@ -52,6 +52,7 @@ export interface Mode {
   text: string;
   robot: string;
   gemini: boolean;
+  alerts?: { channels: string[]; via: string };
 }
 
 export interface Hypothesis {

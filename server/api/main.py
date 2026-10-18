@@ -12,6 +12,7 @@ from config import REPO_ROOT, get_settings
 from container import get_container
 from guards import SECURITY_HEADERS, usage
 from slices.act.router import router as act_router
+from slices.alerts.router import router as alerts_router
 from slices.ask.router import router as ask_router
 from slices.inspect.router import router as inspect_router
 from slices.learn.router import router as learn_router
@@ -42,7 +43,7 @@ async def security_headers(request, call_next):
     for k, v in SECURITY_HEADERS.items():
         response.headers.setdefault(k, v)
     return response
-for r in (teach_router, inspect_router, act_router, learn_router, ask_router):
+for r in (teach_router, inspect_router, act_router, learn_router, ask_router, alerts_router):
     app.include_router(r, prefix="/api")
 
 

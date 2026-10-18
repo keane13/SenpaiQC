@@ -11,7 +11,7 @@ Built for the Manufacturing theme (Intelligent Operations & Industrial Efficienc
 Cloud AI Builder Cup 2026.
 
 - **Live app:** https://senpaiqc-568251697792.us-central1.run.app (sign-in token in the submission notes)
-- **Full pitch narrative** (impact, judging map, spoken pitch): [`docs/pitch-narrative.md`](docs/pitch-narrative.md)
+- **Submission narrative** (follows the AI Builder Cup template: idea, features, flow, architecture, cost, benchmarks, roadmap): [`docs/pitch-narrative.md`](docs/pitch-narrative.md)
 - **Architecture and guardrails:** [`docs/architecture.md`](docs/architecture.md)
 
 ## Problem statement
@@ -51,7 +51,7 @@ uses AI only where judgment is needed and plain code everywhere else:
 | Line operator | **Inspect** | Phone photo or sample part → large pass / rework / scrap banner with the defect circled. "Why" shows the rationale and the expert rule used. Scrap needs a second tap |
 | Line operator | **Act** | Rework steps with tick boxes in **English, Bahasa Indonesia, Thai or Vietnamese**, generated from the cited rule and cached per language |
 | Inspector / supervisor | **Confirm** | Queue of every scrap, every defect with no matching rule and every invalid model result. Overrides are logged; the person's call is what the quality record keeps |
-| QC engineer | **Learn** | p-chart per defect and shift; a point above 3σ opens an investigation. "Find root cause" runs the ADK agent over machines, moulds, lots and their combinations. 8D editor (D1–D8), pre-filled by the agent, with `.docx` export for Word / Google Docs |
+| QC engineer | **Learn** | p-chart per defect and shift; a point above 3σ opens an investigation and alerts the QC team on Telegram or Google Chat (through Pub/Sub, with retries). "Find root cause" runs the ADK agent over machines, moulds, lots and their combinations. 8D editor (D1–D8), pre-filled by the agent, with `.docx` export for Word / Google Docs |
 | Everyone | **Ask SenpaiQC** | Questions in the user's language, answered only from the plant's records (rules, investigations, 8D, statistics, evaluation), always with citations, or "not found in records" |
 | Plant manager | **Overview** | Role-aware "what needs you now", parts inspected, share sent to Gemini, cost per 1,000 parts, open spikes |
 | Optional | **Robot cell** | ER 2 plans `pick → present_to_camera → place_in_bin → stop` by function calling. A safety gate checks every call; a second look at the angle the rule describes; disagreement sends the part to a hold bin. Replay in 3D (Three.js) with a 2D fallback |
@@ -80,7 +80,9 @@ flowchart LR
     FS[(Firestore: rules, decisions, 8D)]
     GCS[(Cloud Storage: photos, videos, episodes)]
     BQ[(BigQuery: inspection_events)]
+    PS[[Pub/Sub: spike alerts]]
   end
+  TG[Telegram / Google Chat]
   P --> API
   API --> Y --> POL
   POL -- confident --> API
@@ -91,6 +93,7 @@ flowchart LR
   API -- video --> FL -- draft rules --> FS
   API --> FS & GCS & BQ
   BQ -- p-chart spike --> ADK
+  API -- new investigation --> PS -- push, OIDC --> API -- alert --> TG
   ADK -- read-only SQL templates --> BQ
   ADK -- hypotheses + 8D draft --> FS
   ER2 -- function calls --> G --> SIM
@@ -103,7 +106,7 @@ flowchart LR
 | **3. Guardrails** | The decision | Plain code: an uncited defect can never pass; scrap, uncited or schema-invalid results go to a person | `needs_human_confirm` flag |
 | **4. Act** | Confirmed decision | Rework steps from the cited rule in the operator's language, or a robot plan through the safety gate | Operator guide / robot episode |
 | **5. Record** | Every final decision | Written to BigQuery (flagged ones only after the human confirm) | `inspection_events` row |
-| **6. Learn** | BigQuery events | p-chart per defect with limits from the first 10 days, so a spike cannot widen its own limits. The ADK agent may only call named SQL templates with bound parameters, `get_cards`, `get_process_context` and `draft_8d` | Investigation, ranked hypotheses, 8D draft |
+| **6. Learn** | BigQuery events | p-chart per defect with limits from the first 10 days, so a spike cannot widen its own limits. The ADK agent may only call named SQL templates with bound parameters, `get_cards`, `get_process_context` and `draft_8d`. A new investigation is published to Pub/Sub, which pushes it back to the service for delivery to Telegram / Google Chat | Investigation, alert, ranked hypotheses, 8D draft |
 | **7. Improve** | Confirmed Gemini decisions | Exported as Ultralytics labels; YOLO retrains on the hard cases | Fewer escalations, lower cost |
 
 The backend is hexagonal: domain code imports no Google SDK, so models and stores are swapped
@@ -138,7 +141,7 @@ On the live service (Cloud Run `us-central1`, Gemini 3.5 Flash-Lite on Vertex AI
 | **The Gemini path is measured on only 2 golden-set parts**, because the set was easy for YOLO | Too few to claim Gemini accuracy | Next: a harder test set (blurred, angled, new parts) |
 | **The single miss came from Gemini passing a defective part** | An "escalated + pass" is currently auto-accepted | Route every escalated pass to a person until citation accuracy is measured |
 | **Rule-citation accuracy and the teacher–student escalation drop are not yet measured** | "Explainable" and "gets cheaper" are designed, not proven | `eval/sample_citations.py` and `run_all.py --weights-after` measure them |
-| **Rule cards are synthetic seed cards**; no real expert video recorded yet | Accept limits are illustrative, not a plant standard | Record one narrated video; have a QC engineer correct one card |
+| **The teach video was recorded by our team**, over slides showing the same text (it drafted 4 of 4 cards, 24 of 24 fields right, in 9.4 s); not yet by a plant inspector | Accept limits are illustrative, not a plant standard | Record one inspector at a real plant; have a QC engineer correct one card |
 | **Process data for root cause is synthetic**, with one planted cause | Proves the method, not field performance | Run on one real plant's inspection log |
 | **Dataset:** one part type, top view, grayscale, possibly augmented near-duplicates | Scores may be optimistic | Validate on local SME photos |
 | **Robot is a scripted kinematic simulator**; the second look is a digital zoom | Demonstrates orchestration and safety, not manipulation | Plug a LeRobot SO-101 simulation or a real arm into the same port |
@@ -153,7 +156,7 @@ On the live service (Cloud Run `us-central1`, Gemini 3.5 Flash-Lite on Vertex AI
 |---|---|
 | Part images | Public casting dataset (Kaggle, pump impellers). See `docs/licences.md`; download with `data/prepare_casting.py` |
 | Process history (30 days, machines, moulds, lots) | **Synthetic**, generated by `data/generate_process.py` with one planted cause. Rows have `line_id` starting `SYN-`, and their latency and cost are 0 because they were never measured |
-| Seed Knowledge Cards (`data/seed_cards.json`) | **Synthetic demo cards** (`approved_by: demo-seed`), to be replaced by cards drafted from a real expert video |
+| Knowledge Cards | Seed cards (`data/seed_cards.json`, `approved_by: demo-seed`) plus `-v2` drafts that Gemini made from our narrated teach video ([script](docs/teach-video-IMP-200-script.md)); limits are illustrative |
 | Metrics | Only from `eval/results/summary.json`; the UI shows nothing that `eval/` did not produce |
 | Robot | Scripted kinematic SO-101 controller; episodes are JSON, replayed in the app |
 
@@ -232,7 +235,7 @@ PROJECT=your-project MAX_INSTANCES=1 ./infra/deploy_cloudrun.sh
 On Windows PowerShell, run the scripts through Git Bash:
 `$env:PROJECT="your-project"; & "C:\Program Files\Git\bin\bash.exe" ./infra/deploy_cloudrun.sh`.
 
-The script prints the seed command for the demo data. On Cloud Run the app refuses to start with
+The script prints the seed command for the demo data. Before recording a demo, `python server/api/demo_reset.py` (with the same `BACKEND`/`GCP_PROJECT`/`FIRESTORE_DATABASE` variables) closes open investigations, so the next spike scan opens a new one and sends a fresh alert; nothing is deleted. On Cloud Run the app refuses to start with
 the default token. Read the judges' token with
 `gcloud secrets versions access latest --secret SENPAIQC_DEMO_TOKEN --project your-project`.
 

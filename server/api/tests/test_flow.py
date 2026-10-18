@@ -118,8 +118,8 @@ def test_second_look_disagreement_reroutes_to_hold(client, monkeypatch):
     assert stats["rerouted_to_hold"] == 1 and stats["needs_human_after"] == 0.0
 
 
-def test_spc_scan_and_root_cause_find_planted_cause(client, tmp_path):
-    c = _seed(client)
+def _load_process_events(c) -> list:
+    """Synthetic process history with the planted cause, written to the event store."""
     subprocess.run([sys.executable, str(REPO_ROOT / "data" / "generate_process.py")], check=True, capture_output=True)
     import csv
     from datetime import datetime
@@ -131,6 +131,12 @@ def test_spc_scan_and_root_cause_find_planted_cause(client, tmp_path):
                                         "defect_name": r["defect_name"] or None,
                                         "confirmed": r["confirmed"] == "True"})) for r in csv.DictReader(f)]
     c.events.write_many(rows)
+    return rows
+
+
+def test_spc_scan_and_root_cause_find_planted_cause(client, tmp_path):
+    c = _seed(client)
+    rows = _load_process_events(c)
     invs = client.post("/api/learn/scan", json={}).json()
     assert [i["defect_name"] for i in invs] == ["porosity"]
     inv = client.post(f"/api/learn/investigations/{invs[0]['id']}/analyse").json()

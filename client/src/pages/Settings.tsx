@@ -17,6 +17,7 @@ export default function Settings({ mode }: { mode: Mode | null }) {
   const [prefs, setPrefs] = useState(loadPrefs);
   const [theme, setTheme] = useState<Theme>(loadTheme());
   const [policy, setPolicy] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
   const toast = useToast();
   useEffect(() => { api("/health").then((h) => setPolicy(h.policy)).catch(() => undefined); }, []);
 
@@ -26,6 +27,19 @@ export default function Settings({ mode }: { mode: Mode | null }) {
     applyTheme(theme);
     toast({ title: "Preferences saved", body: " On this device." });
   };
+
+  const sendTest = async () => {
+    setTesting(true);
+    try {
+      const r = await api("/alerts/test", { method: "POST" });
+      toast({ title: r.queued ? "Test alert queued" : "Test alert sent", body: r.queued ? " Through Pub/Sub; it arrives in a few seconds." : ` To ${r.sent.join(", ")}.` });
+    } catch (e: any) {
+      toast({ title: "Test alert failed", body: ` ${e.message}` });
+    } finally {
+      setTesting(false);
+    }
+  };
+  const channelNames = (mode?.alerts?.channels ?? []).map((c) => (c === "google-chat" ? "Google Chat" : "Telegram"));
 
   const row = (name: string, desc: string, value: React.ReactNode) => (
     <div className="list-item" style={{ alignItems: "center" }}>
@@ -81,6 +95,13 @@ export default function Settings({ mode }: { mode: Mode | null }) {
             {row("Fast check (YOLO)", mode?.fast_path === "none" ? "No weights loaded: every part goes to the closer look." : mode?.fast_path ?? "", on(mode ? mode.fast_path !== "none" : undefined, "Loaded", "Not loaded"))}
             {row("Data store", mode?.backend === "gcp" ? "Firestore, Cloud Storage and BigQuery on Google Cloud." : "Local SQLite and files (development).", on(mode?.backend === "gcp", "Google Cloud", "Local"))}
             {row("Robot cell", "Simulated SO-101 arm behind a safety gate.", on(mode ? mode.robot !== "off" : undefined, "On", "Off"))}
+            {row("Spike alerts",
+              channelNames.length
+                ? `A new spike is sent to ${channelNames.join(" and ")}${mode?.alerts?.via === "pubsub" ? " through Pub/Sub" : ""}.`
+                : "No chat connected: spikes show only in Quality analytics.",
+              channelNames.length
+                ? <button className="btn btn-sm" onClick={sendTest} disabled={testing}>{testing ? <span className="spinner" /> : <Icon name="bell" size={15} />} Send test</button>
+                : on(false, "", "Off"))}
           </div>
         </section>
       </div>

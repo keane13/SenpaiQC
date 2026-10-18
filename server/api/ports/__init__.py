@@ -146,6 +146,21 @@ class RobotBridge(Protocol):
         ...
 
 
+class Notifier(Protocol):
+    """Hands an alert to a queue (Pub/Sub); delivery happens when the queue pushes it back."""
+
+    name: str
+
+    def publish(self, alert: dict[str, Any]) -> None: ...
+
+
+class AlertChannels(Protocol):
+    """Where people read alerts (Telegram, Google Chat)."""
+
+    def names(self) -> list[str]: ...
+    def deliver(self, text: str) -> list[str]: ...
+
+
 class RootCauseAnalyst(Protocol):
     name: str
 
@@ -153,7 +168,7 @@ class RootCauseAnalyst(Protocol):
 
 
 __all__ = [
-    "BlobStore", "CardStore", "DocStore", "EpisodeRecord", "EventSink", "InspectionResult",
-    "ModelUsage", "Prediction", "ReasoningModel", "ReasoningOutput", "RobotBridge",
+    "AlertChannels", "BlobStore", "CardStore", "DocStore", "EpisodeRecord", "EventSink", "InspectionResult",
+    "ModelUsage", "Notifier", "Prediction", "ReasoningModel", "ReasoningOutput", "RobotBridge",
     "RootCauseAnalyst", "TextModel", "VisionModel",
 ]

@@ -1,6 +1,7 @@
-"""GCP adapters: Firestore documents, Cloud Storage blobs, BigQuery events."""
+"""GCP adapters: Firestore documents, Cloud Storage blobs, BigQuery events, Pub/Sub alerts."""
 from __future__ import annotations
 
+import json
 from typing import Any, Optional
 
 from google.cloud import bigquery, firestore, storage
@@ -102,3 +103,17 @@ def _param(name: str, value: Any) -> bigquery.ScalarQueryParameter:
     if isinstance(value, float):
         return bigquery.ScalarQueryParameter(name, "FLOAT64", value)
     return bigquery.ScalarQueryParameter(name, "STRING", str(value))
+
+
+class PubSubNotifier:
+    name = "pubsub"
+
+    def __init__(self, project: str, topic: str):
+        from google.cloud import pubsub_v1
+
+        self.client = pubsub_v1.PublisherClient()
+        self.topic = self.client.topic_path(project, topic)
+
+    def publish(self, alert: dict[str, Any]) -> None:
+        data = json.dumps(alert).encode()
+        self.client.publish(self.topic, data, kind=str(alert.get("kind", ""))).result(timeout=30)

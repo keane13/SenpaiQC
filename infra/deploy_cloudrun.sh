@@ -24,7 +24,8 @@ cd "$(dirname "$0")/.."
 
 gcloud config set project "$PROJECT"
 gcloud services enable aiplatform.googleapis.com run.googleapis.com firestore.googleapis.com storage.googleapis.com \
-  bigquery.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com
+  bigquery.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com \
+  pubsub.googleapis.com
 
 gcloud storage buckets describe "gs://$BUCKET" >/dev/null 2>&1 || \
   gcloud storage buckets create "gs://$BUCKET" --location "$REGION" --uniform-bucket-level-access
@@ -53,18 +54,48 @@ for secret in "$GEMINI_SECRET" "$TOKEN_SECRET"; do
   gcloud secrets describe "$secret" >/dev/null 2>&1 || { echo "Secret $secret not found: run PROJECT=$PROJECT ./infra/push_secrets.sh"; exit 1; }
   gcloud secrets add-iam-policy-binding "$secret" --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor >/dev/null
 done
+SECRETS="GEMINI_API_KEY=$GEMINI_SECRET:latest,DEMO_TOKEN=$TOKEN_SECRET:latest"
+# Optional alert channels, mapped only if infra/push_secrets.sh stored them.
+for key in TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID GOOGLE_CHAT_WEBHOOK; do
+  if gcloud secrets describe "SENPAIQC_$key" >/dev/null 2>&1; then
+    gcloud secrets add-iam-policy-binding "SENPAIQC_$key" --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor >/dev/null
+    SECRETS="$SECRETS,$key=SENPAIQC_$key:latest"
+  fi
+done
+
+# Spike alerts: the app publishes to a topic; a push subscription (created after the deploy) calls
+# back /api/alerts/push with an OIDC token signed as the service account, and retries on failure.
+TOPIC="${ALERT_TOPIC:-senpaiqc-alerts}"
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format 'value(projectNumber)')
+APP_URL="https://senpaiqc-$PROJECT_NUMBER.$REGION.run.app"
+PUSH_URL="$APP_URL/api/alerts/push"
+gcloud pubsub topics describe "$TOPIC" >/dev/null 2>&1 || gcloud pubsub topics create "$TOPIC" --labels app=senpaiqc
+gcloud pubsub topics add-iam-policy-binding "$TOPIC" --member "serviceAccount:$SA" --role roles/pubsub.publisher >/dev/null
+gcloud iam service-accounts add-iam-policy-binding "$SA" --role roles/iam.serviceAccountTokenCreator \
+  --member "serviceAccount:service-$PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com" >/dev/null
 
 cp infra/api.Dockerfile Dockerfile
 trap 'rm -f Dockerfile' EXIT
-# "^@^" makes @ the separator, so values may contain commas (JSON label counts).
-ENV_VARS="^@^BACKEND=gcp@GCP_PROJECT=$PROJECT@GCS_BUCKET=$BUCKET@BQ_DATASET=$BQ_DATASET@FIRESTORE_DATABASE=$FIRESTORE_DB@AUTH_MODE=demo@USE_VERTEX=${USE_VERTEX:-true}@VERTEX_LOCATION=${VERTEX_LOCATION:-global}@TEXT_MODEL=${TEXT_MODEL:-gemini-3.5-flash-lite}@TEXT_PRICE_IN=${TEXT_PRICE_IN:-0.30}@TEXT_PRICE_OUT=${TEXT_PRICE_OUT:-2.50}@ROBOT_MODE=${ROBOT_MODE:-true}"
-[ -n "${YOLO_WEIGHTS:-}" ] && ENV_VARS="$ENV_VARS@YOLO_WEIGHTS=$YOLO_WEIGHTS"
-[ -n "${YOLO_LABEL_COUNTS:-}" ] && ENV_VARS="$ENV_VARS@YOLO_LABEL_COUNTS=$YOLO_LABEL_COUNTS"
+# "^|^" makes | the separator, so values may contain commas (JSON label counts) and @ (emails).
+ENV_VARS="^|^BACKEND=gcp|GCP_PROJECT=$PROJECT|GCS_BUCKET=$BUCKET|BQ_DATASET=$BQ_DATASET|FIRESTORE_DATABASE=$FIRESTORE_DB|AUTH_MODE=demo|USE_VERTEX=${USE_VERTEX:-true}|VERTEX_LOCATION=${VERTEX_LOCATION:-global}|TEXT_MODEL=${TEXT_MODEL:-gemini-3.5-flash-lite}|TEXT_PRICE_IN=${TEXT_PRICE_IN:-0.30}|TEXT_PRICE_OUT=${TEXT_PRICE_OUT:-2.50}|ROBOT_MODE=${ROBOT_MODE:-true}|ALERT_TOPIC=$TOPIC|ALERT_PUSH_AUDIENCE=$PUSH_URL|ALERT_PUSH_SA=$SA|APP_URL=$APP_URL"
+[ -n "${YOLO_WEIGHTS:-}" ] && ENV_VARS="$ENV_VARS|YOLO_WEIGHTS=$YOLO_WEIGHTS"
+[ -n "${YOLO_LABEL_COUNTS:-}" ] && ENV_VARS="$ENV_VARS|YOLO_LABEL_COUNTS=$YOLO_LABEL_COUNTS"
 gcloud run deploy senpaiqc --source . --region "$REGION" --service-account "$SA" \
   --allow-unauthenticated --memory 2Gi --cpu 2 --cpu-boost --timeout 900 \
   --min-instances 0 --max-instances "$MAX_INSTANCES" --concurrency 20 \
   --set-env-vars "$ENV_VARS" \
-  --set-secrets "GEMINI_API_KEY=$GEMINI_SECRET:latest,DEMO_TOKEN=$TOKEN_SECRET:latest"
+  --set-secrets "$SECRETS"
+
+SUB="$TOPIC-push"
+if gcloud pubsub subscriptions describe "$SUB" >/dev/null 2>&1; then
+  gcloud pubsub subscriptions modify-push-config "$SUB" --push-endpoint "$PUSH_URL" \
+    --push-auth-service-account "$SA" --push-auth-token-audience "$PUSH_URL"
+else
+  gcloud pubsub subscriptions create "$SUB" --topic "$TOPIC" --push-endpoint "$PUSH_URL" \
+    --push-auth-service-account "$SA" --push-auth-token-audience "$PUSH_URL" \
+    --ack-deadline 30 --min-retry-delay 10s --max-retry-delay 600s --message-retention-duration 1d \
+    --labels app=senpaiqc
+fi
 
 URL=$(gcloud run services describe senpaiqc --region "$REGION" --format 'value(status.url)')
 echo "Deployed: $URL"

@@ -10,6 +10,8 @@ from typing import Optional
 from domain.models import EIGHT_D_KEYS, EightDReport, Investigation
 from domain.spc import Subgroup, p_chart
 
+from slices.alerts import service as alerts
+
 from .rca_tools import RcaToolbox, z_two_prop
 
 BASELINE_SUBGROUPS = 20  # phase-I: first 10 days x 2 shifts
@@ -46,6 +48,7 @@ def scan(c, part_number: str, defects: list[str]) -> list[Investigation]:
             "data_end": (datetime.fromisoformat(days[-1]) + timedelta(days=1)).strftime("%Y-%m-%dT00:00:00+00:00"),
         }
         c.docs.put("investigations", inv.id, doc)
+        alerts.notify(c, alerts.spike_alert(doc))
         opened.append(doc)
     return opened
 

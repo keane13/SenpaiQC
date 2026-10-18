@@ -24,6 +24,8 @@ class Container:
     qa: object
     robot: object
     policy: EscalationPolicy
+    channels: object
+    notifier: object = None  # None: alerts are delivered inline
 
     def mode(self) -> dict:
         return {
@@ -33,6 +35,7 @@ class Container:
             "text": self.text.name,
             "robot": self.robot.name if self.settings.robot_mode else "off",
             "gemini": self.settings.gemini_enabled,
+            "alerts": {"channels": self.channels.names(), "via": self.notifier.name if self.notifier else "inline"},
         }
 
 
@@ -77,12 +80,21 @@ def build(s: Settings) -> Container:
 
         vision = NoVision()
 
+    from adapters.alert_channels import HttpAlertChannels
     from adapters.robot_sim import ScriptedSO101Sim
+
+    channels = HttpAlertChannels(s.telegram_bot_token, s.telegram_chat_id, s.google_chat_webhook)
+    notifier = None
+    if s.backend == "gcp" and s.alert_topic:
+        from adapters.gcp import PubSubNotifier
+
+        notifier = PubSubNotifier(s.gcp_project, s.alert_topic)
 
     return Container(
         settings=s, docs=docs, cards=DocCardStore(docs), blobs=blobs, events=events,
         vision=vision, reasoning=reasoning, text=text, qa=text, robot=ScriptedSO101Sim(blobs),
         policy=EscalationPolicy(s.keep_threshold, s.escalate_floor, s.min_labels_per_part),
+        channels=channels, notifier=notifier,
     )
 
 
